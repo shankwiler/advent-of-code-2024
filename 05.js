@@ -41,7 +41,14 @@
   return mids;
 })();
 
-// part two
+// part two - flawed
+// I realized this solution isn't quite right -- the topological sort using
+// `.sort` plus a comparator would fail for transitive relationships:
+// (a < b) and (b < c), then the built-in sort algorithm would consider a = c
+// which isn't quite right.
+// I think this happened to work because of the design of the input, like it
+// gave the "full set of relationships" without any transitive ones. Still, I
+// don't like this approach anymore, and added a different solution below.
 (() => {
   const lines = document
     .querySelector("pre")
@@ -79,6 +86,71 @@
           }
           return 0;
         });
+        mids += parseInt(newList[Math.floor(newList.length / 2)]);
+      }
+    }
+  }
+  return mids;
+})();
+
+// part two - fixed
+(() => {
+  const lines = document
+    .querySelector("pre")
+    .innerText.split("\n")
+    .filter((e) => !!e);
+
+  const fullBeforeToAfter = {};
+
+  let mids = 0;
+
+  for (const line of lines) {
+    if (line.includes("|")) {
+      const [first, second] = line.split("|");
+      fullBeforeToAfter[first] ??= [];
+      fullBeforeToAfter[first].push(second);
+    } else {
+      const list = line.split(",");
+      const seen = new Set();
+      let good = true;
+      for (const num of list) {
+        for (const mustBeAfter of fullBeforeToAfter[num] ?? []) {
+          if (seen.has(mustBeAfter)) {
+            good = false;
+          }
+        }
+        seen.add(num);
+      }
+      if (!good) {
+        const beforeToAfter = {};
+        const afterToBefore = {};
+        for (const num of list) {
+          for (const mustBeAfter of fullBeforeToAfter[num] ?? []) {
+            if (list.includes(mustBeAfter)) {
+              beforeToAfter[num] ??= [];
+              beforeToAfter[num].push(mustBeAfter);
+              afterToBefore[mustBeAfter] ??= [];
+              afterToBefore[mustBeAfter].push(num)
+            }
+          }
+        }
+        const newList = [];
+        const nextUp = list.filter(num => !(num in afterToBefore));
+
+        while (nextUp.length !== 0) {
+          const curr = nextUp.pop();
+          newList.push(curr);
+          for (const mustBeAfter of beforeToAfter[curr] ?? []) {
+            // This part could be better, but the dataset is small so not going to worry about it.
+            const canAdd = afterToBefore[mustBeAfter].every(num => newList.includes(num));
+            if (canAdd) {
+              nextUp.push(mustBeAfter);
+            }
+          }
+        }
+        if (!list.every(num => newList.includes(num))) {
+          throw new Error(`cycle found on case ${list}`);
+        }
         mids += parseInt(newList[Math.floor(newList.length / 2)]);
       }
     }
