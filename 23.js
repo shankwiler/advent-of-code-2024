@@ -70,6 +70,10 @@
     for (const match of ms) {
       const matchArr = JSON.parse(match);
       for (const other of xns[matchArr[0]]) {
+        // Probably should have explicitly ignored "other" if it already
+        // is in your "match" -- but it's fine because it'll get washed out
+        // as long as it doesn't have itself as a match. ie the content of
+        // the every call will return false because xns[other] does not have other.
         if (matchArr.every(e => xns[other].has(e))) {
           newMatches.add(JSON.stringify([...matchArr, other].sort()));
         }
